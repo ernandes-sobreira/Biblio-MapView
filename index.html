@@ -38,7 +38,7 @@ button{border:none;border-radius:8px;padding:9px 16px;font-size:14px;font-weight
 input[type=color]{border:1px solid var(--borda);border-radius:6px;padding:2px;width:44px;height:32px;cursor:pointer}
 .mapcard{padding:12px}
 #mapbox svg{width:100%;height:auto;display:block}
-.legend{display:flex;align-items:center;gap:10px;margin-top:8px;padding:0 8px 4px}
+.legend{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:8px;padding:0 8px 4px}
 .legbar{height:14px;flex:1;max-width:320px;border-radius:3px;border:1px solid var(--borda)}
 .legval{font-size:12px;color:var(--suave)}
 .credit{font-size:11px;color:var(--suave);text-align:center;padding:6px 8px 2px;letter-spacing:.2px}
@@ -185,8 +185,7 @@ function render(){
     const d=geo2path(f.geometry,proj);
     paths+=`<path d="${d}" fill="${fill}" data-n="${f.properties.name}" data-v="${v!==undefined?v:''}"/>`;
   });
-  const credEl=`<text x="${W/2}" y="${H-8}" text-anchor="middle" font-family="Arial" font-size="13" fill="#6b7c8f">${CRED}</text>`;
-  const svg=`<svg id="map" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="#ffffff"/>${paths}${credEl}</svg>`;
+  const svg=`<svg id="map" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="#ffffff"/>${paths}</svg>`;
   document.getElementById('mapbox').innerHTML=svg;
   document.getElementById('lmin').textContent=min;
   document.getElementById('lmax').textContent=max;
@@ -215,7 +214,9 @@ function setMode(m){
 function dl(fmt){
   const svgEl=document.getElementById('map');
   if(!svgEl){alert('Gere o mapa primeiro.');return;}
-  const src=new XMLSerializer().serializeToString(svgEl);
+  const vb=svgEl.viewBox.baseVal;
+  const cred=`<text x="${vb.width/2}" y="${vb.height-8}" text-anchor="middle" font-family="Arial" font-size="13" fill="#6b7c8f">${CRED}</text>`;
+  const src=new XMLSerializer().serializeToString(svgEl).replace('</svg>',cred+'</svg>');
   const base=mode==='world'?'biblio-mapview-mundo':'biblio-mapview-brasil';
   if(fmt==='svg'){
     const b=new Blob([src],{type:'image/svg+xml'});
