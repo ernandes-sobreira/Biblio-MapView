@@ -65,8 +65,17 @@ path:hover{stroke:#243447;stroke-width:1}
     <textarea id="ta"></textarea>
     <div class="hint" id="hint"></div>
     <div class="controls">
-      <div class="ctrl"><label>Cor baixa</label><input type="color" id="c1" value="#e8f0f5"></div>
-      <div class="ctrl"><label>Cor alta</label><input type="color" id="c2" value="#1f5f8b"></div>
+      <div class="ctrl" style="min-width:150px"><label>Paleta</label>
+        <select id="pal" onchange="onPal()">
+          <option value="azul">Sequencial azul</option>
+          <option value="verde">Sequencial verde</option>
+          <option value="quentefrio">Quente-frio (menos a mais)</option>
+          <option value="frioquente">Frio-quente (invertido)</option>
+          <option value="custom">Personalizada</option>
+        </select>
+      </div>
+      <div class="ctrl" id="wrap-c1"><label>Cor baixa</label><input type="color" id="c1" value="#e8f0f5"></div>
+      <div class="ctrl" id="wrap-c2"><label>Cor alta</label><input type="color" id="c2" value="#1f5f8b"></div>
       <div class="ctrl"><label>Sem dado</label><input type="color" id="c0" value="#e9edf1"></div>
     </div>
     <div class="row">
@@ -163,7 +172,35 @@ function geo2path(g,proj){
 function hex2rgb(h){h=h.replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
 function rgb2hex(r,g,b){return'#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');}
 function lerp(a,b,t){return Math.round(a+(b-a)*t);}
-function color(t,c1,c2){const a=hex2rgb(c1),b=hex2rgb(c2);return rgb2hex(lerp(a[0],b[0],t),lerp(a[1],b[1],t),lerp(a[2],b[2],t));}
+
+// Paletas como lista de stops (hex). t=0 -> primeiro, t=1 -> ultimo.
+const PALETTES={
+  azul:['#e8f0f5','#1f5f8b'],
+  verde:['#e9f5ec','#1b7a3e'],
+  quentefrio:['#2c7bb6','#ffffbf','#d7191c'],
+  frioquente:['#d7191c','#ffffbf','#2c7bb6']
+};
+function paletteStops(){
+  const p=document.getElementById('pal').value;
+  if(p==='custom') return [document.getElementById('c1').value, document.getElementById('c2').value];
+  return PALETTES[p];
+}
+function colorAt(t,stops){
+  if(stops.length===1) return stops[0];
+  const seg=1/(stops.length-1);
+  let i=Math.min(stops.length-2, Math.floor(t/seg));
+  const lt=(t-i*seg)/seg;
+  const a=hex2rgb(stops[i]), b=hex2rgb(stops[i+1]);
+  return rgb2hex(lerp(a[0],b[0],lt),lerp(a[1],b[1],lt),lerp(a[2],b[2],lt));
+}
+function gradientCss(stops){return 'linear-gradient(90deg,'+stops.join(',')+')';}
+
+function onPal(){
+  const custom=document.getElementById('pal').value==='custom';
+  document.getElementById('wrap-c1').style.display=custom?'flex':'none';
+  document.getElementById('wrap-c2').style.display=custom?'flex':'none';
+  render();
+}
 
 function render(){
   const geo=activeGeo();
@@ -171,8 +208,7 @@ function render(){
   const vals=Object.values(data);
   const min=vals.length?Math.min(...vals):0;
   const max=vals.length?Math.max(...vals):1;
-  const c1=document.getElementById('c1').value;
-  const c2=document.getElementById('c2').value;
+  const stops=paletteStops();
   const c0=document.getElementById('c0').value;
   const W=1000,H=mode==='world'?500:560;
   const proj=makeProjector(geo,W,H-28);
@@ -181,7 +217,7 @@ function render(){
     if(f.properties.name==='Antarctica')return;
     const v=data[f.properties.name];
     let fill=c0;
-    if(v!==undefined){const t=max>min?(v-min)/(max-min):0.5;fill=color(t,c1,c2);}
+    if(v!==undefined){const t=max>min?(v-min)/(max-min):0.5;fill=colorAt(t,stops);}
     const d=geo2path(f.geometry,proj);
     paths+=`<path d="${d}" fill="${fill}" data-n="${f.properties.name}" data-v="${v!==undefined?v:''}"/>`;
   });
@@ -189,7 +225,7 @@ function render(){
   document.getElementById('mapbox').innerHTML=svg;
   document.getElementById('lmin').textContent=min;
   document.getElementById('lmax').textContent=max;
-  document.getElementById('legbar').style.background=`linear-gradient(90deg,${c1},${c2})`;
+  document.getElementById('legbar').style.background=gradientCss(stops);
   document.querySelectorAll('#map path').forEach(p=>{
     p.addEventListener('mousemove',e=>{
       const v=p.getAttribute('data-v');
@@ -233,6 +269,7 @@ function dl(fmt){
   };
   img.src='data:image/svg+xml;base64,'+svg64;
 }
+onPal();
 setMode('world');
 </script>
 </body>
